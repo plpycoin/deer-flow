@@ -936,7 +936,7 @@ async def enhance_prompt(request: EnhancePromptRequest, user: User = Depends(get
 
 
 @app.post("/api/mcp/server/metadata", response_model=MCPServerMetadataResponse)
-async def mcp_server_metadata(request: MCPServerMetadataRequest):
+async def mcp_server_metadata(request: MCPServerMetadataRequest, user: User = Depends(get_current_user_required)):
     """Get information about an MCP server."""
     # Check if MCP server configuration is enabled
     if not get_bool_env("ENABLE_MCP_SERVER_CONFIGURATION", False):
