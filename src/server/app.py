@@ -988,7 +988,7 @@ async def rag_config(user: User = Depends(get_current_user_required)):
 
 
 @app.get("/api/rag/resources", response_model=RAGResourcesResponse)
-async def rag_resources(request: Annotated[RAGResourceRequest, Query()]):
+async def rag_resources(request: Annotated[RAGResourceRequest, Query()], user: User = Depends(get_current_user_required)):
     """Get the resources of the RAG."""
     retriever = build_retriever()
     if retriever:
