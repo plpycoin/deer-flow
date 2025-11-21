@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { env } from "~/env";
+import { authService } from "~/lib/auth";
 
 import { type StreamEvent } from "./StreamEvent";
 
