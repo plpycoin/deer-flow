@@ -1,14 +1,12 @@
 // Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 // SPDX-License-Identifier: MIT
 
+import { apiClient } from "~/lib/api-client";
 import { resolveServiceURL } from "./resolve-service-url";
 
 export async function generatePodcast(content: string) {
-  const response = await fetch(resolveServiceURL("podcast/generate"), {
+  const response = await apiClient.fetch(resolveServiceURL("podcast/generate"), {
     method: "post",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({ content }),
   });
   if (!response.ok) {
