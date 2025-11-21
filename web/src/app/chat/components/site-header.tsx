@@ -8,6 +8,9 @@ import { useTranslations } from 'next-intl';
 import { LanguageSwitcher } from "~/components/deer-flow/language-switcher";
 import { NumberTicker } from "~/components/magicui/number-ticker";
 import { Button } from "~/components/ui/button";
+import { CasdoorLoginButton } from "~/components/auth/LoginButton";
+import { UserMenu } from "~/components/auth/UserMenu";
+import { useAuth } from "~/hooks/useAuth";
 import { env } from "~/env";
 
 export function SiteHeader() {
