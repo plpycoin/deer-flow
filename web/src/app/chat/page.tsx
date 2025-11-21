@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 import { Button } from "~/components/ui/button";
+import { AuthGuard } from "~/components/auth/AuthGuard";
 
 import { Logo } from "../../components/deer-flow/logo";
 import { ThemeToggle } from "../../components/deer-flow/theme-toggle";
