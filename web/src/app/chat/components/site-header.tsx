@@ -15,6 +15,7 @@ import { env } from "~/env";
 
 export function SiteHeader() {
   const t = useTranslations('common');
+  const { isAuthenticated, loading } = useAuth();
 
   return (
     <header className="supports-backdrop-blur:bg-background/80 bg-background/40 sticky top-0 left-0 z-40 flex h-15 w-full flex-col items-center backdrop-blur-lg">
