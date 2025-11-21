@@ -63,6 +63,10 @@ from src.utils.log_sanitizer import (
     sanitize_tool_name,
     sanitize_user_content,
 )
+from src.server.auth.casdoor import casdoor_client
+from src.server.auth.jwt import jwt_manager
+from src.server.auth.middleware import get_current_user_required, get_current_user_optional
+from src.server.auth.user import User
 
 logger = logging.getLogger(__name__)
 
