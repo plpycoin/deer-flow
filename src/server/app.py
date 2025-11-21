@@ -838,7 +838,7 @@ async def text_to_speech(request: TTSRequest, user: User = Depends(get_current_u
 
 
 @app.post("/api/podcast/generate")
-async def generate_podcast(request: GeneratePodcastRequest):
+async def generate_podcast(request: GeneratePodcastRequest, user: User = Depends(get_current_user_required)):
     try:
         report_content = request.content
         print(report_content)
