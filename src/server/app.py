@@ -852,7 +852,7 @@ async def generate_podcast(request: GeneratePodcastRequest, user: User = Depends
 
 
 @app.post("/api/ppt/generate")
-async def generate_ppt(request: GeneratePPTRequest):
+async def generate_ppt(request: GeneratePPTRequest, user: User = Depends(get_current_user_required)):
     try:
         report_content = request.content
         print(report_content)
