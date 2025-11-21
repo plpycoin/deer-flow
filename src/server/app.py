@@ -871,7 +871,7 @@ async def generate_ppt(request: GeneratePPTRequest, user: User = Depends(get_cur
 
 
 @app.post("/api/prose/generate")
-async def generate_prose(request: GenerateProseRequest):
+async def generate_prose(request: GenerateProseRequest, user: User = Depends(get_current_user_required)):
     try:
         sanitized_prompt = request.prompt.replace("\r\n", "").replace("\n", "")
         logger.info(f"Generating prose for prompt: {sanitized_prompt}")
