@@ -982,7 +982,7 @@ async def mcp_server_metadata(request: MCPServerMetadataRequest, user: User = De
 
 
 @app.get("/api/rag/config", response_model=RAGConfigResponse)
-async def rag_config():
+async def rag_config(user: User = Depends(get_current_user_required)):
     """Get the config of the RAG."""
     return RAGConfigResponse(provider=SELECTED_RAG_PROVIDER)
 
