@@ -9,9 +9,6 @@ export async function generatePodcast(content: string) {
     method: "post",
     body: JSON.stringify({ content }),
   });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
   const arrayBuffer = await response.arrayBuffer();
   const blob = new Blob([arrayBuffer], { type: "audio/mp3" });
   const audioUrl = URL.createObjectURL(blob);
