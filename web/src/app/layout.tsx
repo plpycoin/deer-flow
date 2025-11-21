@@ -50,7 +50,9 @@ export default async function RootLayout({
       </head>
       <body className="bg-app">
         <NextIntlClientProvider messages={messages}>
-          <ThemeProviderWrapper>{children}</ThemeProviderWrapper>
+          <ThemeProviderWrapper>
+            <AuthProvider>{children}</AuthProvider>
+          </ThemeProviderWrapper>
           <Toaster />
         </NextIntlClientProvider>
         {
