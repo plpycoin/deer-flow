@@ -895,7 +895,7 @@ async def generate_prose(request: GenerateProseRequest, user: User = Depends(get
 
 
 @app.post("/api/prompt/enhance")
-async def enhance_prompt(request: EnhancePromptRequest):
+async def enhance_prompt(request: EnhancePromptRequest, user: User = Depends(get_current_user_required)):
     try:
         sanitized_prompt = request.prompt.replace("\r\n", "").replace("\n", "")
         logger.info(f"Enhancing prompt: {sanitized_prompt}")
