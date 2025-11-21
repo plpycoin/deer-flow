@@ -997,7 +997,7 @@ async def rag_resources(request: Annotated[RAGResourceRequest, Query()], user: U
 
 
 @app.get("/api/config", response_model=ConfigResponse)
-async def config():
+async def config(user: User = Depends(get_current_user_required)):
     """Get the config of the server."""
     return ConfigResponse(
         rag=RAGConfigResponse(provider=SELECTED_RAG_PROVIDER),
