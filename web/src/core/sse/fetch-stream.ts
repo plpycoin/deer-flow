@@ -10,11 +10,15 @@ export async function* fetchStream(
   url: string,
   init: RequestInit,
 ): AsyncIterable<StreamEvent> {
+  // Get authentication token
+  const token = authService.getToken();
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
+      ...(token && { "Authorization": `Bearer ${token}` }),
     },
     ...init,
   });
