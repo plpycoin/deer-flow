@@ -782,7 +782,7 @@ def _make_event(event_type: str, data: dict[str, any]):
 
 
 @app.post("/api/tts")
-async def text_to_speech(request: TTSRequest):
+async def text_to_speech(request: TTSRequest, user: User = Depends(get_current_user_required)):
     """Convert text to speech using volcengine TTS API."""
     app_id = get_str_env("VOLCENGINE_TTS_APPID", "")
     if not app_id:
