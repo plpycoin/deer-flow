@@ -98,6 +98,108 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],  # Use the configured list of methods
     allow_headers=["*"],  # Now allow all headers, but can be restricted further
 )
+
+# Authentication endpoints
+@app.get("/api/auth/login")
+async def login(request: Request):
+    """Redirect to Casdoor OAuth authorization URL."""
+    redirect_uri = request.query_params.get("redirect_uri")
+    auth_url = casdoor_client.get_auth_url(redirect_uri=redirect_uri)
+    return RedirectResponse(url=auth_url)
+
+
+@app.get("/api/auth/callback")
+async def callback(request: Request):
+    """Handle Casdoor OAuth callback."""
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    redirect_uri = request.query_params.get("redirect_uri")
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Authorization code not provided")
+
+    logger.info(f"Processing OAuth callback with code: {code[:10]}... state: {state}")
+
+    try:
+        # Complete OAuth flow
+        user = await casdoor_client.complete_oauth_flow(code, redirect_uri)
+        if not user:
+            raise HTTPException(status_code=400, detail="Failed to complete OAuth flow")
+
+        # Create JWT token
+        token = jwt_manager.create_access_token(user)
+
+        # Return user data and token
+        response_data = {
+            "success": True,
+            "user": user.to_dict(),
+            "token": token,
+        }
+
+        return Response(
+            content=f"""
+<script>
+    window.opener.postMessage({json.dumps(response_data)}, '*');
+    window.close();
+</script>
+            """,
+            media_type="text/html",
+        )
+
+    except Exception as e:
+        logger.error(f"Error in OAuth callback: {e}")
+        error_response = {
+            "success": False,
+            "error": "Authentication failed",
+        }
+        return Response(
+            content=f"""
+<script>
+    window.opener.postMessage({json.dumps(error_response)}, '*');
+    window.close();
+</script>
+            """,
+            media_type="text/html",
+        )
+
+
+@app.post("/api/auth/logout")
+async def logout(current_user: User = Depends(get_current_user_required)):
+    """Logout user and redirect to Casdoor logout."""
+    try:
+        # You could add server-side session invalidation here if needed
+        return {"success": True, "message": "Logged out successfully"}
+    except Exception as e:
+        logger.error(f"Error during logout: {e}")
+        raise HTTPException(status_code=500, detail="Logout failed")
+
+
+@app.get("/api/auth/me")
+async def get_current_user(current_user: User = Depends(get_current_user_required)):
+    """Get current authenticated user information."""
+    return {
+        "success": True,
+        "user": current_user.to_dict(),
+    }
+
+
+@app.get("/api/auth/status")
+async def auth_status(current_user: Optional[User] = Depends(get_current_user_optional)):
+    """Check authentication status."""
+    if current_user:
+        return {
+            "success": True,
+            "authenticated": True,
+            "user": current_user.to_dict(),
+        }
+    else:
+        return {
+            "success": True,
+            "authenticated": False,
+            "user": None,
+        }
+
+
 # Load examples into RAG providers if configured
 load_milvus_examples()
 load_qdrant_examples()
