@@ -26,6 +26,27 @@ export function SiteHeader() {
         </div>
         <div className="relative flex items-center gap-2">
           <LanguageSwitcher />
+
+          {/* Authentication UI */}
+          {!loading && (
+            <>
+              {isAuthenticated ? (
+                <UserMenu className="relative z-10" />
+              ) : (
+                <div className="relative z-10">
+                  <CasdoorLoginButton
+                    variant="outline"
+                    size="sm"
+                    onLoginSuccess={() => {
+                      // Page will automatically update due to auth context
+                    }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* GitHub Star Button */}
           <div
             className="pointer-events-none absolute inset-0 z-0 h-full w-full rounded-full opacity-60 blur-2xl"
             style={{
