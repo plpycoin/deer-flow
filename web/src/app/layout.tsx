@@ -11,6 +11,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 
 import { ThemeProviderWrapper } from "~/components/deer-flow/theme-provider-wrapper";
 import { env } from "~/env";
+import { AuthProvider } from "~/components/auth/AuthProvider";
 
 import { Toaster } from "../components/deer-flow/toaster";
 
