@@ -1,16 +1,16 @@
 import type { Resource } from "../messages";
 
+import { apiClient } from "~/lib/api-client";
 import { resolveServiceURL } from "./resolve-service-url";
 
-export function queryRAGResources(query: string) {
-  return fetch(resolveServiceURL(`rag/resources?query=${query}`), {
-    method: "GET",
-  })
-    .then((res) => res.json())
-    .then((res) => {
-      return res.resources as Array<Resource>;
-    })
-    .catch(() => {
-      return [];
-    });
+export async function queryRAGResources(query: string): Promise<Array<Resource>> {
+  try {
+    const res = await apiClient.get<{ resources: Array<Resource> }>(
+      resolveServiceURL(`rag/resources?query=${query}`)
+    );
+    return res.resources;
+  } catch (error) {
+    console.error("Failed to query RAG resources:", error);
+    return [];
+  }
 }

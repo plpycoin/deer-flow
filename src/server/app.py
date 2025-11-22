@@ -9,9 +9,9 @@ import os
 from typing import Annotated, Any, List, Optional, cast
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse, RedirectResponse
 from langchain_core.messages import AIMessageChunk, BaseMessage, ToolMessage
 from langgraph.checkpoint.mongodb import AsyncMongoDBSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -63,6 +63,10 @@ from src.utils.log_sanitizer import (
     sanitize_tool_name,
     sanitize_user_content,
 )
+from src.server.auth.casdoor import casdoor_client
+from src.server.auth.jwt import jwt_manager
+from src.server.auth.middleware import get_current_user_required, get_current_user_optional
+from src.server.auth.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +98,108 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],  # Use the configured list of methods
     allow_headers=["*"],  # Now allow all headers, but can be restricted further
 )
+
+# Authentication endpoints
+@app.get("/api/auth/login")
+async def login(request: Request):
+    """Redirect to Casdoor OAuth authorization URL."""
+    redirect_uri = request.query_params.get("redirect_uri")
+    auth_url = casdoor_client.get_auth_url(redirect_uri=redirect_uri)
+    return RedirectResponse(url=auth_url)
+
+
+@app.get("/api/auth/callback")
+async def callback(request: Request):
+    """Handle Casdoor OAuth callback."""
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    redirect_uri = request.query_params.get("redirect_uri")
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Authorization code not provided")
+
+    logger.info(f"Processing OAuth callback with code: {code[:10]}... state: {state}")
+
+    try:
+        # Complete OAuth flow
+        user = await casdoor_client.complete_oauth_flow(code, redirect_uri)
+        if not user:
+            raise HTTPException(status_code=400, detail="Failed to complete OAuth flow")
+
+        # Create JWT token
+        token = jwt_manager.create_access_token(user)
+
+        # Return user data and token
+        response_data = {
+            "success": True,
+            "user": user.to_dict(),
+            "token": token,
+        }
+
+        return Response(
+            content=f"""
+<script>
+    window.opener.postMessage({json.dumps(response_data)}, '*');
+    window.close();
+</script>
+            """,
+            media_type="text/html",
+        )
+
+    except Exception as e:
+        logger.error(f"Error in OAuth callback: {e}")
+        error_response = {
+            "success": False,
+            "error": "Authentication failed",
+        }
+        return Response(
+            content=f"""
+<script>
+    window.opener.postMessage({json.dumps(error_response)}, '*');
+    window.close();
+</script>
+            """,
+            media_type="text/html",
+        )
+
+
+@app.post("/api/auth/logout")
+async def logout(current_user: User = Depends(get_current_user_required)):
+    """Logout user and redirect to Casdoor logout."""
+    try:
+        # You could add server-side session invalidation here if needed
+        return {"success": True, "message": "Logged out successfully"}
+    except Exception as e:
+        logger.error(f"Error during logout: {e}")
+        raise HTTPException(status_code=500, detail="Logout failed")
+
+
+@app.get("/api/auth/me")
+async def get_current_user(current_user: User = Depends(get_current_user_required)):
+    """Get current authenticated user information."""
+    return {
+        "success": True,
+        "user": current_user.to_dict(),
+    }
+
+
+@app.get("/api/auth/status")
+async def auth_status(current_user: Optional[User] = Depends(get_current_user_optional)):
+    """Check authentication status."""
+    if current_user:
+        return {
+            "success": True,
+            "authenticated": True,
+            "user": current_user.to_dict(),
+        }
+    else:
+        return {
+            "success": True,
+            "authenticated": False,
+            "user": None,
+        }
+
+
 # Load examples into RAG providers if configured
 load_milvus_examples()
 load_qdrant_examples()
@@ -103,7 +209,7 @@ graph = build_graph_with_memory()
 
 
 @app.post("/api/chat/stream")
-async def chat_stream(request: ChatRequest):
+async def chat_stream(request: ChatRequest, user: User = Depends(get_current_user_required)):
     # Check if MCP server configuration is enabled
     mcp_enabled = get_bool_env("ENABLE_MCP_SERVER_CONFIGURATION", False)
 
@@ -676,7 +782,7 @@ def _make_event(event_type: str, data: dict[str, any]):
 
 
 @app.post("/api/tts")
-async def text_to_speech(request: TTSRequest):
+async def text_to_speech(request: TTSRequest, user: User = Depends(get_current_user_required)):
     """Convert text to speech using volcengine TTS API."""
     app_id = get_str_env("VOLCENGINE_TTS_APPID", "")
     if not app_id:
@@ -732,7 +838,7 @@ async def text_to_speech(request: TTSRequest):
 
 
 @app.post("/api/podcast/generate")
-async def generate_podcast(request: GeneratePodcastRequest):
+async def generate_podcast(request: GeneratePodcastRequest, user: User = Depends(get_current_user_required)):
     try:
         report_content = request.content
         print(report_content)
@@ -746,7 +852,7 @@ async def generate_podcast(request: GeneratePodcastRequest):
 
 
 @app.post("/api/ppt/generate")
-async def generate_ppt(request: GeneratePPTRequest):
+async def generate_ppt(request: GeneratePPTRequest, user: User = Depends(get_current_user_required)):
     try:
         report_content = request.content
         print(report_content)
@@ -765,7 +871,7 @@ async def generate_ppt(request: GeneratePPTRequest):
 
 
 @app.post("/api/prose/generate")
-async def generate_prose(request: GenerateProseRequest):
+async def generate_prose(request: GenerateProseRequest, user: User = Depends(get_current_user_required)):
     try:
         sanitized_prompt = request.prompt.replace("\r\n", "").replace("\n", "")
         logger.info(f"Generating prose for prompt: {sanitized_prompt}")
@@ -789,7 +895,7 @@ async def generate_prose(request: GenerateProseRequest):
 
 
 @app.post("/api/prompt/enhance")
-async def enhance_prompt(request: EnhancePromptRequest):
+async def enhance_prompt(request: EnhancePromptRequest, user: User = Depends(get_current_user_required)):
     try:
         sanitized_prompt = request.prompt.replace("\r\n", "").replace("\n", "")
         logger.info(f"Enhancing prompt: {sanitized_prompt}")
@@ -830,7 +936,7 @@ async def enhance_prompt(request: EnhancePromptRequest):
 
 
 @app.post("/api/mcp/server/metadata", response_model=MCPServerMetadataResponse)
-async def mcp_server_metadata(request: MCPServerMetadataRequest):
+async def mcp_server_metadata(request: MCPServerMetadataRequest, user: User = Depends(get_current_user_required)):
     """Get information about an MCP server."""
     # Check if MCP server configuration is enabled
     if not get_bool_env("ENABLE_MCP_SERVER_CONFIGURATION", False):
@@ -876,13 +982,13 @@ async def mcp_server_metadata(request: MCPServerMetadataRequest):
 
 
 @app.get("/api/rag/config", response_model=RAGConfigResponse)
-async def rag_config():
+async def rag_config(user: User = Depends(get_current_user_required)):
     """Get the config of the RAG."""
     return RAGConfigResponse(provider=SELECTED_RAG_PROVIDER)
 
 
 @app.get("/api/rag/resources", response_model=RAGResourcesResponse)
-async def rag_resources(request: Annotated[RAGResourceRequest, Query()]):
+async def rag_resources(request: Annotated[RAGResourceRequest, Query()], user: User = Depends(get_current_user_required)):
     """Get the resources of the RAG."""
     retriever = build_retriever()
     if retriever:
@@ -891,7 +997,7 @@ async def rag_resources(request: Annotated[RAGResourceRequest, Query()]):
 
 
 @app.get("/api/config", response_model=ConfigResponse)
-async def config():
+async def config(user: User = Depends(get_current_user_required)):
     """Get the config of the server."""
     return ConfigResponse(
         rag=RAGConfigResponse(provider=SELECTED_RAG_PROVIDER),
